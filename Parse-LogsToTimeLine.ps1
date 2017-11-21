@@ -1,7 +1,14 @@
 ﻿[CmdletBinding()]
 Param (
     [Parameter(Mandatory=$false)]
-    [string]$LogFolder=(Get-Location)
+    [string]$LogFolder=(Get-Location),
+    [Parameter(Mandatory=$false)]
+    [string]$outputfile="Timeline.csv",
+    [Parameter(Mandatory=$false)]
+    [int]$Threads = (Get-WmiObject -class win32_processor -Property NumberOfLogicalProcessors).NumberOfLogicalProcessors,
+    [Parameter(Mandatory=$false)]
+    [int]$ThreadTimeout = 0
+
 )
 
 #Function Invoke-Parallel - Taken Exactly From - https://github.com/RamblingCookieMonster/Invoke-Parallel Ccommit 96107a3  on Jun 7, 2017
@@ -568,18 +575,27 @@ function Invoke-Parallel {
 Write-Verbose "Ensuring Path is Absoulte"
 $LogFolder = Resolve-Path $LogFolder
 
-Write-Verbose "Tagging All MetaData As Unusuable for Performance Reasons"
-
-Get-ChildItem $LogFolder\LocaleMetaData\*.mta -Exclude "*Unused-*"| Rename-Item -NewName {("Unused-" + $_.Name)}
+Write-Verbose "Looking for MetaData"
+if (test-path "$LogFolder\LocaleMetaData\") {
+    Write-Verbose "Tagging All MetaData As Unusuable for Performance Reasons"
+    Get-ChildItem $LogFolder\LocaleMetaData\*.mta -Exclude "*Unused-*"| Rename-Item -NewName {("Unused-" + $_.Name)}
+}
 
 Get-ChildItem $LogFolder\*.evtx |
-    Invoke-Parallel -ImportVariables -scriptBlock  {
+    Invoke-Parallel -ImportVariables -RunspaceTimeout $ThreadTimeout -Throttle $Threads -scriptBlock {
         Set-Location "$LogFolder";
         $SampleEvents = Get-WinEvent -Path $_ -MaxEvents 100 | Where-Object {$_.Message -Like ""}
         if($SampleEvents) {
-            Write-Verbose "It Appears the Local Meta Data Will Be Needed for $_. Bringing Back the MetaData, This will slow things down a bit"
-            Get-ChildItem ("$LogFolder\LocaleMetaData\Unused-" + $_.BaseName + "*.mta") | Rename-Item -NewName {$_.Name -replace "Unused-",""}
+                Write-Warning "Event DLL missing for $_ attempting to find metadata"
+            if (test-path ("$LogFolder\LocaleMetaData\Unused-" + $_.BaseName + "*.mta")) {
+                Write-Warning "MetaData Found: Parsing will be a bit slower on this file"
+                Get-ChildItem ("$LogFolder\LocaleMetaData\Unused-" + $_.BaseName + "*.mta") | Rename-Item -NewName {$_.Name -replace "Unused-",""}
+            }
+            else {
+                Write-Warning "MetaData Not Found: Will Continue with Just Event Strings"
+            }
         }
+                    
         Get-WinEvent -Path $_ -ErrorAction SilentlyContinue |
         select containerLog,
             id,
@@ -590,8 +606,17 @@ Get-ChildItem $LogFolder\*.evtx |
             UserId,
             ProviderName,
             @{Name="TimeCreated";expression={(($_.TimeCreated).ToUniversalTime()).ToString('yyyy-MM-dd HH:mm:ssZ')}},
-            @{Name="message";expression={$_.message -replace "\r\n"," | " -replace "\n", " | " -replace "The local computer may not have the necessary registry information or message DLL files to display the message, or you may not have permission to access them.",""}} |
+            @{Name="message";expression={
+                if ($_.message) {
+                    $_.message -replace "\r\n"," | " -replace "\n", " | " -replace "The local computer may not have the necessary registry information or message DLL files to display the message, or you may not have permission to access them.",""
+                }
+                else {
+                    [xml]$temp = $_.toxml(); ($temp.Event.EventData.Name) -replace "\r\n"," | " -replace "\n", " | "
+                }
+
+            }} |
         export-csv -NoTypeInformation ( $_.basename + ".csv")
+        
         #if ($CustomError) {
         #Write-Error $CustomError
         #}
@@ -606,4 +631,4 @@ $TimeLine = @()
 Get-ChildItem $LogFolder\*.csv | ForEach-Object{
     $TimeLine += Import-Csv $_
 }
-$TimeLine | Sort-Object TimeCreated | Export-Csv -NoTypeInformation Timeline.csv
+$TimeLine | Sort-Object TimeCreated | Export-Csv -NoTypeInformation $outputfile
