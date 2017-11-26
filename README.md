@@ -1,6 +1,6 @@
 # WindowsEventsToCSVTimeline
 
-A couple of simple Powershell scripts to collect all Windows Event Logs from a Host and parse them into one CSV Timeline.
+A couple of simple Powershell scripts to collect all Windows Event Logs from a host and parse them into one CSV Timeline.
 
 ## But Why This Script?
 This script uses Windows Powershell to parse event logs following 5 goals.
