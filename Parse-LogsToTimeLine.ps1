@@ -1,6 +1,6 @@
 ﻿<#
     .SYNOPSIS 
-        Parses all Event Logs in a specific log folder into a single csv timeline. 
+        Parses all Event Logs from a specified log folder into a single csv timeline. 
     .DESCRIPTION 
         Parses all Event Logs gathered with the .\Gather-LogsToTimeLine.ps1 script.
 		

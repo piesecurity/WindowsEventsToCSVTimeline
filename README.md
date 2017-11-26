@@ -1,4 +1,4 @@
-#WindowsEventsToCSVTimeline
+# WindowsEventsToCSVTimeline
 
 A couple of simple Powershell scripts to collect all Windows Event Logs from a host and parse them into one CSV Timeline.
 
@@ -10,7 +10,7 @@ This script uses Windows Powershell to parse event logs following 5 goals.
 2. **Avoid Missing Event Viewer Descriptors** - We collect metadata for event logs during collection. If your parsing box doesn't have all the same roles we avoid this dreaded error.
 
 ```
-#Example of Missing Descriptors
+# Example of Missing Descriptors
 The description for Event ID 100 from source XXXX cannot be found. Either the component that raises this event is not installed on your local computer or the installation is corrupted. You can install or repair the component on the local computer.
 ```
 Although we don't always use the metadata to accomplish goal #1.
@@ -21,13 +21,13 @@ Although we don't always use the metadata to accomplish goal #1.
 
 5. **Be Multi-Threaded** - We use this great project to multithread our parsing and push Get-WinEvent (and your CPU) as fast as possible. https://github.com/RamblingCookieMonster/Invoke-Parallel
 
-###Getting Started
+### Getting Started
 
 To Collect All of the Logs!
 ```
 .\Gather-LogsToTimeLine.ps1 -output "c:\Logs"
 
-#Copy your Log Files Back
+#Now copy your log files back to your analysis system
 ```
 
 To Parse All of the Logs!
@@ -35,7 +35,7 @@ To Parse All of the Logs!
 .\Parse-LogsToTimeLine.ps1 -LogFolder "C:\Logs" -outputfile MyTimeline.csv
 ```
 
-###Additional Options - See
+### Additional Options
 ```
 Get-Help .\Gather-LogsToTimeLine.ps1 -Full
 Get-Help .\Parse-LogsToTimeLine.ps1 -Full
