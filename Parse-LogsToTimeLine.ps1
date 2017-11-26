@@ -1,11 +1,65 @@
-﻿[CmdletBinding()]
+﻿<#
+    .SYNOPSIS 
+        Parses all Event Logs in a specific log folder into a single csv timeline. 
+    .DESCRIPTION 
+        Parses all Event Logs gathered with the .\Gather-LogsToTimeLine.ps1 script.
+		
+		Requires Powershell Version 3+ and an ExecutionPolicy of 'unrestricted'.
+		
+		Logs from multiple systems can be placed into LogFolder and will be timelined together.
+		
+		By default, this script consumes a heavy amount of resources to get the job done quickly.
+		This can be changed with the Threads and ThreadTimeout parameters.
+		
+		For best results:
+		-Avoid parsing evtx files when a CSV has already been created from Gather-LogsToTimeLine.ps1.
+		-Avoid parsing evtx files greater than 40 MB
+		
+		This script does not delete or clear any collected log files.
+    .PARAMETER LogFolder 
+        The folder where all event logs are saved. Absolute and relative paths are allowed
+    .PARAMETER outputfile  
+        Specifiy the file name of the timeline output.
+    .PARAMETER Threads  
+        Sets the number of threads to parse event logs. Default is the number of cores on the first processor.
+		Gathers evtx files for all logs excluded under the "excludeEvtxFiles" parameter. This doesn't slow down collection too much but allows you to use the evtx files in other tools.
+	.PARAMETER ThreadTimeout  
+        Sets a timeout value in seconds to give up parsing a particular event log and timeline what has been completed. Default is "Do Not Time Out"
+    .EXAMPLE 
+        .\Parse-LogsToTimeLine.ps1 -LogFolder "c:\Logs"
+		Parses all Event Logs in the folder "C:\Logs". The output will be Timeline.csv created in the current working directory
+	.EXAMPLE 
+        .\Parse-LogsToTimeLine.ps1 -LogFolder "c:\Logs" -outputfile "Case-1111-EVTXTimeline.csv"
+		Parses all Event Logs in the folder "C:\Logs". The output will be "Case-1111-EVTXTimeline.csv" created in the current working directory
+	.EXAMPLE 
+        .\Parse-LogsToTimeLine.ps1 -LogFolder "c:\Logs" -outputfile "Case-1111-EVTXTimeline.csv" -threads 8 -threadTimeout 600
+		Parses all Event Logs in the folder "C:\Logs". The output will be "Case-1111-EVTXTimeline.csv" created in the current working directory. Parse the logs using 8 simultaneous threads. Give up parsing any log that takes longer than 10 minutes.
+
+    .NOTES
+		Author: @piesecurity - https://twitter.com/piesecurity - admin@pie-secure.org       
+        LEGAL:
+        This program is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+    
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+        You should have received a copy of the GNU General Public License
+        along with this program.  If not, see <http://www.gnu.org/licenses/>.
+		
+		Special thanks to https://github.com/RamblingCookieMonster/Invoke-Parallel
+    #>
+[CmdletBinding()]
 Param (
     [Parameter(Mandatory=$false)]
     [string]$LogFolder=(Get-Location),
     [Parameter(Mandatory=$false)]
     [string]$outputfile="Timeline.csv",
     [Parameter(Mandatory=$false)]
-    [int]$Threads = (Get-WmiObject -class win32_processor -Property NumberOfLogicalProcessors).NumberOfLogicalProcessors,
+    [int]$Threads = (Get-WmiObject -class win32_processor -Property NumberOfLogicalProcessors).NumberOfLogicalProcessors[0],
     [Parameter(Mandatory=$false)]
     [int]$ThreadTimeout = 0
 

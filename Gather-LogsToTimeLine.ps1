@@ -1,4 +1,51 @@
-﻿[CmdletBinding()]
+﻿<#
+    .SYNOPSIS 
+        Gather Event Logs from the current Windows system and place them in to a folder of your choosing.
+    .DESCRIPTION 
+        Gathers All Event Logs from Windows 7/2008R2 and newer operating systems.
+		
+		Requires Powershell Version 2+ and an ExecutionPolicy of 'unrestricted'.
+		
+		By default, all logs that can be gathered with Get-EventLog will be parsed immediately as it is the fastest possible method.
+		This behavior can be changed with the excludeEvtxFiles and IncludeAllEvtxFiles parameters.
+		
+		Output is sorted in a single folder. It can then be compressed and moved over to another system for parsing.
+		
+		This script does not delete or clear any event logs.
+    .PARAMETER Output  
+        The folder where all event logs will be saved. Absolute and relative paths are allowed
+    .PARAMETER excludeEvtxFiles  
+        A comma separated list of all logs this script should just parse now instead of gathering the .evtx file for parsing. Default is any log that can be gathered with Get-EventLog (This is the fastest mode possible)
+    .PARAMETER IncludeAllEvtxFiles  
+        Gathers evtx files for all logs excluded under the "excludeEvtxFiles" parameter. This doesn't slow down collection too much but allows you to use the evtx files in other tools.
+	.PARAMETER LogTag  
+        Prepends a string of your choosing to the all collected log files. Default is the local computer name.
+    .EXAMPLE 
+        .\Gather-LogsToTimeLine.ps1 -output "c:\Logs"
+		Places all Event Logs into the folder "C:\Logs". The folder will be created if it does not already exist.
+	.EXAMPLE 
+        .\Gather-LogsToTimeLine.ps1 -output "c:\Logs" -excludeEvtxFiles Security,System
+		Places all Event Logs into the folder "C:\Logs". The folder will be created if it does not already exist. Only the Security and System log will be parsed immediately. The rest will be exported as evtx files.
+	.EXAMPLE 
+        .\Gather-LogsToTimeLine.ps1 -output "c:\Logs" -excludeEvtxFiles Security,System -IncludeAllEvtxFiles
+		Places all Event Logs into the folder "C:\Logs". The folder will be created if it does not already exist. Only the Security and System log will be parsed immediately. All Logs (Including Security and System) will be exported as evtx files.
+		
+    .NOTES 
+        Author: @piesecurity - https://twitter.com/piesecurity - admin@pie-secure.org       
+        LEGAL:
+        This program is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+    
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+        You should have received a copy of the GNU General Public License
+        along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    #>
+[CmdletBinding()]
 Param (
     [Parameter(Mandatory=$false)]
     [string]$output=".\Logs",
