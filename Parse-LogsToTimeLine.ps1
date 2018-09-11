@@ -25,6 +25,10 @@
 		Gathers evtx files for all logs excluded under the "excludeEvtxFiles" parameter. This doesn't slow down collection too much but allows you to use the evtx files in other tools.
 	.PARAMETER ThreadTimeout  
         Sets a timeout value in seconds to give up parsing a particular event log and timeline what has been completed. Default is "Do Not Time Out"
+    .PARAMETER StartTime 
+        Sets the earliest time to include in the timeline. The input is interpreted as UTC. Default is none
+	.PARAMETER EndTime
+        Sets the latest time to include in the timeline. The input is interpreted as UTC. Default is now
     .EXAMPLE 
         .\Parse-LogsToTimeLine.ps1 -LogFolder "c:\Logs"
 		Parses all Event Logs in the folder "C:\Logs". The output will be Timeline.csv created in the current working directory
@@ -54,18 +58,22 @@
     #>
 [CmdletBinding()]
 Param (
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory=$true)]
     [string]$LogFolder=(Get-Location),
     [Parameter(Mandatory=$false)]
     [string]$outputfile="Timeline.csv",
     [Parameter(Mandatory=$false)]
-    [int]$Threads = (Get-WmiObject -class win32_processor -Property NumberOfLogicalProcessors).NumberOfLogicalProcessors[0],
+    [int]$Threads = (Get-CimInstance -ClassName 'Win32_Processor').NumberOfCores[0],
     [Parameter(Mandatory=$false)]
-    [int]$ThreadTimeout = 0
-
+    [int]$ThreadTimeout = 0,
+    [Parameter(Mandatory=$false)]
+    [datetime]$startTime = (Get-Date -Year 1970 -format r),
+    [Parameter(Mandatory=$false)]
+    [datetime]$endTime= (Get-Date)
 )
-
-#Function Invoke-Parallel - Taken Exactly From - https://github.com/RamblingCookieMonster/Invoke-Parallel Ccommit 96107a3  on Jun 7, 2017
+[datetime]$startTime = get-date $startTime -Format r
+[datetime]$endTime = get-date $endTime -Format r
+#Function Invoke-Parallel - Taken Exactly From - https://github.com/RamblingCookieMonster/Invoke-Parallel Commit cd8bc50  on May 17, 2018
 function Invoke-Parallel {
     <#
     .SYNOPSIS
@@ -257,6 +265,7 @@ function Invoke-Parallel {
         else {
             $script:MaxQueue = $MaxQueue
         }
+        $ProgressId = Get-Random
         Write-Verbose "Throttle: '$throttle' SleepTimer '$sleepTimer' runSpaceTimeout '$runspaceTimeout' maxQueue '$maxQueue' logFile '$logFile'"
 
         #If they want to import variables or modules, create a clean runspace, get loaded items, use those to exclude items
@@ -315,7 +324,7 @@ function Invoke-Parallel {
 
                     #Progress bar if we have inputobject count (bound parameter)
                     if (-not $Quiet) {
-                        Write-Progress  -Activity "Running Query" -Status "Starting threads"`
+                        Write-Progress -Id $ProgressId -Activity "Running Query" -Status "Starting threads"`
                             -CurrentOperation "$startedCount threads defined - $totalCount input objects - $script:completedCount input objects processed"`
                             -PercentComplete $( Try { $script:completedCount / $totalCount * 100 } Catch {0} )
                     }
@@ -609,7 +618,7 @@ function Invoke-Parallel {
 
             Get-RunspaceData -wait
             if (-not $quiet) {
-                Write-Progress -Activity "Running Query" -Status "Starting threads" -Completed
+                Write-Progress -Id $ProgressId -Activity "Running Query" -Status "Starting threads" -Completed
             }
         }
         finally {
@@ -624,8 +633,6 @@ function Invoke-Parallel {
     }
 }
 
-
-
 Write-Verbose "Ensuring Path is Absoulte"
 $LogFolder = Resolve-Path $LogFolder
 
@@ -638,7 +645,7 @@ if (test-path "$LogFolder\LocaleMetaData\") {
 Get-ChildItem $LogFolder\*.evtx |
     Invoke-Parallel -ImportVariables -RunspaceTimeout $ThreadTimeout -Throttle $Threads -scriptBlock {
         Set-Location "$LogFolder";
-        $SampleEvents = Get-WinEvent -Path $_ -MaxEvents 100 | Where-Object {$_.Message -Like ""}
+        $SampleEvents = Get-WinEvent -FilterHashtable @{Path = $_; StartTime=$startTime; EndTime=$endTime} -MaxEvents 100 -ErrorAction SilentlyContinue| Where-Object {$_.Message -Like ""}
         if($SampleEvents) {
                 Write-Warning "Event DLL missing for $_ attempting to find metadata"
             if (test-path ("$LogFolder\LocaleMetaData\Unused-" + $_.BaseName + "*.mta")) {
@@ -650,8 +657,8 @@ Get-ChildItem $LogFolder\*.evtx |
             }
         }
                     
-        Get-WinEvent -Path $_ -ErrorAction SilentlyContinue |
-        select containerLog,
+        Get-WinEvent -FilterHashtable @{Path = $_ ; StartTime=$startTime; EndTime=$endTime} -ErrorAction SilentlyContinue |
+        select-object containerLog,
             id,
             levelDisplayName,
             MachineName,
@@ -685,4 +692,5 @@ $TimeLine = @()
 Get-ChildItem $LogFolder\*.csv | ForEach-Object{
     $TimeLine += Import-Csv $_
 }
+#convert the timestamp and parse
 $TimeLine | Sort-Object TimeCreated | Export-Csv -NoTypeInformation $outputfile
