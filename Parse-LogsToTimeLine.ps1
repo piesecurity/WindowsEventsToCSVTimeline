@@ -705,8 +705,7 @@ if (($logParserPath)) {
     Write-Verbose "Running Logparser"
     $initalLocation = get-location
     Set-Location $LogFolder
-    & $logParserPath -i:csv "Select ContainerLog,Id,LevelDisplayName,MachineName,LogName,ProcessId,UserId,ProviderName,TimeCreated,message
-    INTO $outputfile from *.csv  order by TimeCreated"
+    & $logParserPath -i:csv "Select ContainerLog,Id,LevelDisplayName,MachineName,LogName,ProcessId,UserId,ProviderName,TimeCreated,message INTO $outputfile from *.csv  order by TimeCreated"
     Set-Location $initalLocation.path
 }
 else {
