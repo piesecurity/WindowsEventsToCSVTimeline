@@ -61,7 +61,7 @@ Param (
     [Parameter(Mandatory=$true)]
     [string]$LogFolder=(Get-Location),
     [Parameter(Mandatory=$false)]
-    [string]$outputfile=((Resolve-Path .).Path + "Timeline.csv"),
+    [string]$outputfile=((Resolve-Path .).Path + "\Timeline.csv"),
     [Parameter(Mandatory=$false)]
     [int]$Threads = (Get-CimInstance -ClassName 'Win32_Processor').NumberOfCores[0],
     [Parameter(Mandatory=$false)]
