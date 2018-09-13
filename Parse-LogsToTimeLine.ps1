@@ -61,7 +61,7 @@ Param (
     [Parameter(Mandatory=$true)]
     [string]$LogFolder=(Get-Location),
     [Parameter(Mandatory=$false)]
-    [string]$outputfile="Timeline.csv",
+    [string]$outputfile=((Resolve-Path .).Path + "Timeline.csv"),
     [Parameter(Mandatory=$false)]
     [int]$Threads = (Get-CimInstance -ClassName 'Win32_Processor').NumberOfCores[0],
     [Parameter(Mandatory=$false)]
@@ -688,9 +688,33 @@ Get-ChildItem $LogFolder\*.evtx |
 #"c:\Program Files (x86)\Log Parser 2.2\LogParser.exe" -i:csv "Select to_timestamp(TimeCreated,'mm/dd/yyyy hh:mm:ss zzz') as Time,* INTO timeline.csv from *.csv  order by Time"
 
 Write-Verbose "Bringing All Logs into One Time via Powershell"
-$TimeLine = @()
-Get-ChildItem $LogFolder\*.csv | ForEach-Object{
-    $TimeLine += Import-Csv $_
+Write-Verbose "Looking for LogParser - If Installed"
+$localPaths = $env:Path.split(";")
+$localPaths += "C:\Program Files (x86)\Log Parser 2.2\"
+$localPaths += "C:\Program Files\Log Parser 2.2\"
+$localPaths | ForEach-Object {
+    $checkLogParserPath = "$_\logparser.exe"
+    if (Test-Path ($checkLogParserPath)) {
+        Write-Verbose "LogParser found at $checkLogParserPath."
+        $logParserPath = $checkLogParserPath
+        
+    }
 }
-#convert the timestamp and parse
-$TimeLine | Sort-Object TimeCreated | Export-Csv -NoTypeInformation $outputfile
+
+if (($logParserPath)) {
+    Write-Verbose "Running Logparser"
+    $initalLocation = get-location
+    Set-Location $LogFolder
+    & $logParserPath -i:csv "Select ContainerLog,Id,LevelDisplayName,MachineName,LogName,ProcessId,UserId,ProviderName,TimeCreated,message
+    INTO $outputfile from *.csv  order by TimeCreated"
+    Set-Location $initalLocation.path
+}
+else {
+    Write-Verbose "Combining Results with Windows Powershell (Slower)"
+    $TimeLine = @()
+    Get-ChildItem $LogFolder\*.csv | ForEach-Object{
+        $TimeLine += Import-Csv $_
+        $TimeLine | Sort-Object TimeCreated | Export-Csv -NoTypeInformation $outputfile
+    }
+}
+    
