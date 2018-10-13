@@ -50,7 +50,7 @@ Param (
     [Parameter(Mandatory=$false)]
     [string]$output=".\Logs",
     [Parameter(Mandatory=$false)]
-    $excludeEvtxFiles = (Get-EventLog -List).Log,
+    $excludeEvtxFiles = ((get-eventlog -list) | foreach-object{$_.log}),
     [Parameter(Mandatory=$false)]
     $logTag = $env:ComputerName,
     [Parameter(Mandatory=$false)]
@@ -100,7 +100,7 @@ if ($excludeEvtxFiles) {
 }
 Write-Verbose "Dump All Operational Logs Event Log With Tag: $logtag Excluding: $excludeEvtxFiles"
 
-Get-WinEvent -ListLog * | where-object {$_.recordcount -gt 0} | where-object {$_.LogName -notin $excludeEvtxFiles} | 
+Get-WinEvent -ListLog * | where-object {$_.recordcount -gt 0} | where-object {$excludeEvtxFiles -notcontains $_.LogName} |
 ForEach-Object {
     wevtutil epl $_.LogName  ($output + "\" + "$LogTag-" + ($_.LogName -replace "/","%4") +".evtx")
 }

@@ -22,6 +22,16 @@ To accomplish goal #1, we only use the metadata when it is required.
 
 5. **Be Multi-Threaded** - We use this great project to multi-thread our parsing and push Get-WinEvent (and your CPU) as fast as possible. https://github.com/RamblingCookieMonster/Invoke-Parallel
 
+### System Requirements
+
+Gather-LogsToTimeLine.ps1 only supports PowerShell version 2.0 thru 5.1
+
+1.0 and 6.0+ (PSCore) are not supported
+
+Parse-LogsToTimeLine.ps1 only support Powershell Versions 3.0+
+
+PowerShell v6 (PSCore) is supported on Windows Only
+
 ### Getting Started
 
 Collect All of the Logs!
